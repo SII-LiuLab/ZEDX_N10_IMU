@@ -2,40 +2,66 @@
   "bayer_pattern": "GRBG",
   "black_level_raw10": 42,
   "rgb_gains": [
-    1.1846153736114502,
+    1.1133333444595337,
     1.0,
-    2.2871286869049072
+    2.107255458831787
   ],
-  "neutral_roi_normalized": [
-    0.25,
-    0.65,
-    0.75,
-    0.85
-  ],
-  "reference": "Assumed-neutral white tabletop in the captured scene; not a color-chart calibration",
+  "reference": "User-confirmed white paper, current indoor lighting; not a color-chart calibration",
   "shared_between_eyes": true,
   "neutral_medians_bgr_before": [
     [
-      61.0,
-      139.0,
-      117.0
+      80.0,
+      170.0,
+      154.5
     ],
     [
-      40.0,
-      92.0,
-      78.0
+      78.5,
+      164.0,
+      145.5
     ]
   ],
-  "neutral_medians_bgr_after": [
+  "camera_model": "ZED X Mini",
+  "camera_serial": 53004639,
+  "capture_exposure_us": 13000,
+  "capture_gain": 100,
+  "color_matrix_rgb_rows": [
     [
-      139.5148468017578,
-      139.0,
-      138.60000610351562
+      1.74409,
+      -0.58124,
+      -0.16285
     ],
     [
-      91.48514556884766,
-      92.0,
-      92.4000015258789
+      -0.31862,
+      1.31531,
+      0.00331
+    ],
+    [
+      -0.04883,
+      -0.8199,
+      1.86873
     ]
+  ],
+  "color_matrix_source": "https://community.stereolabs.com/t/rgb-color-balancing/2735",
+  "color_matrix_status": "ZED X AR0234 reference example from Stereolabs, transposed from ISP input rows to RGB output rows (neutral-axis row sums=1); not calibrated on this unit",
+  "black_level_status": "Retained historical RAW10 black estimate 42; no lens-covered dark-frame calibration",
+  "quality_status": "Reference ISP matrix plus paper-neutral WB; no certified color-chart accuracy",
+  "white_level_raw10": 208.75,
+  "neutral_rois_normalized": [
+    [
+      0.46,
+      0.205,
+      0.6,
+      0.245
+    ],
+    [
+      0.42,
+      0.205,
+      0.56,
+      0.245
+    ]
+  ],
+  "reference_raw_sha256": [
+    "8e2a5d39ed6470bfafa0a0c004efab62647b4f2ed6b4de4cf1b104afc248579f",
+    "5c9158d9ab004ef1fa94de78e73df6ca694323c7f86ffaa948ce142cff192d0c"
   ]
 }

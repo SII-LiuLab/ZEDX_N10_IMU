@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>N10 实时相机</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#10151c;color:#e9eff7}*{box-sizing:border-box}
+body{margin:0;padding:24px;max-width:1800px;margin:auto}header{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:22px}
+h1{font-size:23px;margin:0 0 7px}p{margin:0;color:#9faebf;font-size:14px}#connection{color:#90c9fc;font-size:14px}
+main{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}main.single{grid-template-columns:1fr;max-width:1100px;margin:auto}
+article{background:#19212b;border:1px solid #2b3848;border-radius:12px;overflow:hidden}.title{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;gap:8px}
+h2{font-size:16px;margin:0}.badge{font-size:12px;color:#a8b5c5}.badge.live{color:#78d4a3}.image{position:relative;background:#080d12;min-height:220px;display:grid;place-items:center}
+canvas{display:block;width:100%;height:auto;max-height:75vh;object-fit:contain}.image.stale canvas{opacity:.2}.overlay{position:absolute;background:#10151cdd;padding:12px 18px;border-radius:8px;color:#b8c8db}.image:not(.stale) .overlay{display:none}
+footer{padding:10px 16px;font-size:12px;color:#9faebf;display:flex;justify-content:space-between;gap:12px}button{background:transparent;color:#a9cfff;border:1px solid #3c536b;padding:4px 9px;border-radius:5px;cursor:pointer}
+.image:fullscreen{width:100vw;height:100vh}.image:fullscreen canvas{max-height:100vh;height:100%;object-fit:contain}.note{margin-top:20px;font-size:12px}
+@media(max-width:800px){body{padding:14px}main{grid-template-columns:1fr}header{align-items:start;flex-direction:column;gap:8px}}
+</style>
+<header><div><h1>N10 实时相机</h1><p>实时预览 · 双击画面可放大</p></div><span id="connection">正在连接相机…</span></header>
+<main id="grid"></main><p class="note">ZED 深度图用于观察距离分布，黑色区域可能没有有效测距。并列画面不表示三机同步曝光。关闭页面后，终端中的预览仍运行；Ctrl+C 停止。</p>
+<script>
+const grid=document.querySelector('#grid'), connection=document.querySelector('#connection'), cards=new Map();
+const names={zed:'ZED',shw_v6:'SHW V6',shw_v7:'SHW V7'}, states={warming:'预热中',live:'实时',stale:'画面停滞',failed:'相机异常',stopped:'已停止'};
+let rate=10,lastStatus=0,pairedStarted=false;
+function mark(card,text){card.image.classList.add('stale');card.overlay.textContent=text;}
+function add(name,view){
+ const key=name+'/'+view, article=document.createElement('article');
+ article.innerHTML=`<div class="title"><h2>${names[name]} · ${view==='depth'?'深度':'RGB'}</h2><span class="badge">预热中</span></div><div class="image stale"><canvas width="960" height="600"></canvas><span class="overlay">等待第一帧…</span></div><footer><span class="metrics">等待画面</span><button>放大</button></footer>`;
+ grid.append(article);const card={name,view,article,image:article.querySelector('.image'),canvas:article.querySelector('canvas'),overlay:article.querySelector('.overlay'),badge:article.querySelector('.badge'),metrics:article.querySelector('.metrics'),after:0,lastFrame:0,count:0,window:performance.now(),fps:0};cards.set(key,card);
+ const expand=()=>card.image.requestFullscreen?.().catch(()=>{});article.querySelector('button').onclick=expand;card.image.ondblclick=expand;if(name!=='zed')pollFrame(card);
+}
+function draw(card,bitmap,sequence){
+ if(card.canvas.width!==bitmap.width||card.canvas.height!==bitmap.height){card.canvas.width=bitmap.width;card.canvas.height=bitmap.height;}
+ card.canvas.getContext('2d').drawImage(bitmap,0,0);bitmap.close();card.after=sequence;card.lastFrame=performance.now();card.count++;
+ if(card.lastFrame-card.window>=2000){card.fps=card.count*1000/(card.lastFrame-card.window);card.count=0;card.window=card.lastFrame;}
+ card.image.classList.remove('stale');card.metrics.textContent=`${card.canvas.width} × ${card.canvas.height} · 显示 ${card.fps.toFixed(1)} fps`;
+}
+async function pollZed(){
+ const rgb=cards.get('zed/rgb'),depth=cards.get('zed/depth'),start=performance.now();
+ try{if(!document.hidden){
+  const response=await fetch(`/frame/zed/rgbd?after=${rgb.after}`,{cache:'no-store',signal:AbortSignal.timeout(3000)});
+  if(response.status===200){
+   const blob=await response.blob(),split=Number(response.headers.get('X-RGB-Bytes'));
+   const images=await Promise.all([createImageBitmap(blob.slice(0,split,'image/jpeg')),createImageBitmap(blob.slice(split,blob.size,'image/jpeg'))]);
+   const sequence=response.headers.get('X-Sequence');draw(rgb,images[0],sequence);draw(depth,images[1],sequence);
+  }
+ }}catch(_){}
+ if(performance.now()-rgb.lastFrame>2000)for(const card of [rgb,depth])mark(card,performance.now()-lastStatus>3000?'连接已断开':'等待新画面…');
+ setTimeout(pollZed,Math.max(10,1000/rate-(performance.now()-start)));
+}
+async function pollFrame(card){
+ const start=performance.now();
+ try{
+  if(!document.hidden){
+   const response=await fetch(`/frame/${card.name}/${card.view}?after=${card.after}`,{cache:'no-store',signal:AbortSignal.timeout(3000)});
+   if(response.status===200){
+    const bitmap=await createImageBitmap(await response.blob());
+    draw(card,bitmap,response.headers.get('X-Sequence'));
+   }
+  }
+ }catch(_){/* Status polling distinguishes a stopped camera from a broken connection. */}
+ if(performance.now()-card.lastFrame>2000)mark(card,performance.now()-lastStatus>3000?'连接已断开':'等待新画面…');
+ setTimeout(()=>pollFrame(card),Math.max(10,1000/rate-(performance.now()-start)));
+}
+async function status(){
+ try{
+  const response=await fetch('/api/status',{cache:'no-store',signal:AbortSignal.timeout(2500)});if(!response.ok)throw Error();
+  const data=await response.json();lastStatus=performance.now();rate=data.fps_limit;
+  for(const [name,info]of Object.entries(data.cameras))for(const view of info.views){
+   const key=name+'/'+view;if(!cards.has(key))add(name,view);const card=cards.get(key);
+   card.badge.textContent=`${states[info.state]||info.state}${info.preview_fps?' · 输出 '+info.preview_fps.toFixed(1)+' fps':''}`;card.badge.className='badge '+info.state;
+   card.badge.title=info.error||'';if(info.state!=='live')mark(card,states[info.state]||'等待画面');
+  }
+  if(cards.has('zed/depth')&&!pairedStarted){pairedStarted=true;pollZed();}
+  grid.className=cards.size===1?'single':'';connection.textContent=`已连接 · ${Object.keys(data.cameras).map(n=>names[n]).join(' / ')}`;
+ }catch(_){connection.textContent='连接已断开 · 正在重试';for(const card of cards.values())mark(card,'连接已断开');}
+ setTimeout(status,1000);
+}status();
+</script></html>

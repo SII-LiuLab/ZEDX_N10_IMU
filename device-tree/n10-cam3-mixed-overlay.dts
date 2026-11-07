@@ -1,0 +1,142 @@
+// Current N10 only: preserve SHW VC1/2; route ZED eyes to VC0/3.
+/dts-v1/;
+/plugin/;
+#define NUM_LANES 4
+#include "ar0234-sl-modes.dtsi"
+
+/ {
+    overlay-name = "N10 CAM3 SHW V6/V7 plus ZED V8";
+    compatible = "nvidia,p4071-0000+p3834-0008", "nvidia,tegra264";
+
+    fragment@4 {
+        target-path = "/";
+        __overlay__ {
+            n10-cam3-mixed {
+                compatible = "n10,cam3-mixed-zedx";
+                nvidia,gmsl-dser-device = <&dser_b>;
+                channel = "a";
+                camera-serializers = <&n10_zed_ser>;
+                status = "okay";
+            };
+        };
+    };
+
+    fragment@0 {
+        target-path = "/bus@0/i2c@810c680000";
+        __overlay__ {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            imx185_e@1f { status = "disabled"; };
+            imx185_h@22 { status = "disabled"; };
+            n10_zed_ser: zedx_ser@62 {
+                compatible = "stereolabs,sl_max9295";
+                reg = <0x62>;
+                zedx-id = "0";
+                channel = "a";
+                mode = "master";
+                camera_model = "zedx";
+                camera-sensors = <&n10_zed_left &n10_zed_right>;
+                imu = <&n10_imu_a &n10_imu_b>;
+            };
+            n10_imu_a: bmi088@3b {
+                compatible = "bmi,bmi088";
+                reg = <0x3b>;
+                accel_i2c_addr = <0x3c>;
+                accel_matrix = [01 00 00 00 01 00 00 00 01];
+                gyro_matrix = [01 00 00 00 01 00 00 00 01];
+            };
+            n10_imu_b: bmi088@4b {
+                compatible = "bmi,bmi088";
+                reg = <0x4b>;
+                accel_i2c_addr = <0x4c>;
+                accel_matrix = [01 00 00 00 01 00 00 00 01];
+                gyro_matrix = [01 00 00 00 01 00 00 00 01];
+            };
+            n10_zed_left: zedx_left@28 {
+                compatible = "stereolabs,zedx";
+                reg = <0x28>;
+                clocks = <&bpmp 0x116>, <&bpmp 0x116>;
+                clock-names = "extperiph1", "pllp_grtba";
+                mclk = "extperiph1";
+                zedx-id = "0";
+                channel = "a";
+                has-eeprom;
+                eeprom-addr = <0x54>;
+                devnode = "video4";
+                sync_sensor = "ZED_CAM0";
+                sync_sensor_index = <2>;
+                AR0234_MODES("0", "serial_c", "0")
+                ports {
+                    #address-cells = <1>; #size-cells = <0>;
+                    port@0 {
+                        reg = <0>;
+                        n10_zed_out0: endpoint {
+                            vc-id = <0>; port-index = <2>; bus-width = <4>;
+                            opt-csi-port = "b"; i2c-cc = <0>;
+                            remote-endpoint = <&imx185_csi_in4>;
+                        };
+                    };
+                };
+            };
+            n10_zed_right: zedx_right@20 {
+                compatible = "stereolabs,zedx";
+                reg = <0x20>;
+                clocks = <&bpmp 0x116>, <&bpmp 0x116>;
+                clock-names = "extperiph1", "pllp_grtba";
+                mclk = "extperiph1";
+                zedx-id = "0";
+                channel = "a";
+                has-eeprom;
+                eeprom-addr = <0x54>;
+                devnode = "video7";
+                sync_sensor = "ZED_CAM0";
+                sync_sensor_index = <1>;
+                AR0234_MODES("3", "serial_c", "0")
+                ports {
+                    #address-cells = <1>; #size-cells = <0>;
+                    port@0 {
+                        reg = <0>;
+                        n10_zed_out1: endpoint {
+                            vc-id = <3>; port-index = <2>; bus-width = <4>;
+                            opt-csi-port = "b"; i2c-cc = <0>;
+                            remote-endpoint = <&imx185_csi_in7>;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    fragment@1 { target = <&imx185_csi_in4>; __overlay__ { remote-endpoint = <&n10_zed_out0>; }; };
+    fragment@2 { target = <&imx185_csi_in7>; __overlay__ { remote-endpoint = <&n10_zed_out1>; }; };
+    fragment@3 {
+        target-path = "/tegra-camera-platform/modules";
+        __overlay__ {
+            // Argus/SDK pair 0 must contain the two optical eyes consecutively.
+            // SDK left @20/VC3 and right @28/VC0; coordinator maps their pipes.
+            module0 {
+                badge = "zedx_ar0234"; position = "bottomleft"; status = "okay";
+                drivernode0 { status = "okay"; pcl_id = "v4l2_sensor"; devname = "zedx 7-0020";
+                    sysfs-device-tree = "/sys/firmware/devicetree/base/bus@0/i2c@810c680000/zedx_right@20"; };
+            };
+            module1 {
+                badge = "zedx_ar0234"; position = "bottomright"; status = "okay";
+                drivernode0 { status = "okay"; pcl_id = "v4l2_sensor"; devname = "zedx 7-0028";
+                    sysfs-device-tree = "/sys/firmware/devicetree/base/bus@0/i2c@810c680000/zedx_left@28"; };
+            };
+            module2 {
+                badge = "imx185_topright_liimx185"; position = "topright"; status = "okay";
+                drivernode0 { status = "okay"; pcl_id = "v4l2_sensor"; devname = "shw5g_30fps 7-0012";
+                    sysfs-device-tree = "/sys/firmware/devicetree/base/bus@0/i2c@810c680000/imx185_f@20"; };
+            };
+            module3 {
+                badge = "imx185_bottomcenter_liimx185"; position = "bottomcenter"; status = "okay";
+                drivernode0 { status = "okay"; pcl_id = "v4l2_sensor"; devname = "shw5g_30fps 7-0013";
+                    sysfs-device-tree = "/sys/firmware/devicetree/base/bus@0/i2c@810c680000/imx185_g@21"; };
+            };
+            module4 { status = "disabled"; drivernode0 { status = "disabled"; }; };
+            module5 { status = "disabled"; drivernode0 { status = "disabled"; }; };
+            module6 { status = "disabled"; drivernode0 { status = "disabled"; }; };
+            module7 { status = "disabled"; drivernode0 { status = "disabled"; }; };
+        };
+    };
+};

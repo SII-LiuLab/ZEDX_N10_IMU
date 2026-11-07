@@ -1,0 +1,16 @@
+{
+  "shw5g_vb1940.isp": {
+    "source": "Local N10 camera manuals bundle: 配置sensing SHW5G相机驱动流程和文件/camera_overrides.isp",
+    "sensor": "VB1940 / SHW5G",
+    "status": "Vendor tuning; old optional attributes rejected by R38.2 ISP remain unchanged for provenance",
+    "sha256": "003d40d3a9f119cabe302ab17f77f267ba4187f1489a13a48dcbdbf54f0a35c1"
+  },
+  "zedx_ar0234.isp": {
+    "source": "https://stereolabs.sfo2.cdn.digitaloceanspaces.com/utils/drivers/ZEDX/1.4.4/R36.4/stereolabs-zedbox-mini_1.4.4-SL-MAX9296-ZEDBOX-MINI-L4T36.4.0_arm64.deb",
+    "package_sha256": "03ab5817f6d7c02309183f7d90ef0119c705375b4ac687caff221a8f3817a8c4",
+    "member": "var/nvidia/nvcam/settings/zedx_ar0234.isp",
+    "sensor": "AR0234 / ZED X Mini",
+    "status": "Text ISP only extracted; R36.4 package was NOT installed on R38.2. Native reprocessing tested on current Thor; not a blanket package compatibility claim",
+    "sha256": "6a452ed4ea59f09c1da41221d5fc1a4bfcd36228303f18df55112ecb028f3aa8"
+  }
+}

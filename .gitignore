@@ -9,3 +9,15 @@ Module.symvers
 modules.order
 source/bmi088/*.ko
 *.zip
+build/
+vendor/
+runs/
+evidence/
+.capture.lock
+.camera-transition.lock
+.shw_v6.lock
+.shw_v7.lock
+.zed.lock
+source/max96712_n10_mixed/*.ko
+source/stereolabs/zedx/*.ko
+/ouputs/
